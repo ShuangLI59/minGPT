@@ -12,7 +12,7 @@ set_seed(42)
 
 from mingpt.model import GPT, GPTConfig
 from mingpt.trainer import Trainer, TrainerConfig
-from mingpt.utils import sample
+
 
 import pdb
 import os
@@ -21,10 +21,10 @@ import pickle
 parser = argparse.ArgumentParser('play_char.py', description='Run minGPT experiments.')
 parser.add_argument('--block_size', type=int, default=128, help='spatial extent of the model for its context')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size')
-parser.add_argument('--max_epochs', type=int, default=200, help='max epochs')
+parser.add_argument('--max_epochs', type=int, default=50, help='max epochs')
 parser.add_argument('--input_data', type=str, default='data/input.txt', help='data')
+parser.add_argument('--ckpt_path', type=str, default='checkpoint/input', help='data')
 args = parser.parse_args()
-
 
 
 class CharDataset(Dataset):
@@ -102,18 +102,9 @@ def main(args):
     # initialize a trainer instance and kick off training
     tconf = TrainerConfig(max_epochs=args.max_epochs, batch_size=args.batch_size, learning_rate=6e-4,
                           lr_decay=True, warmup_tokens=512*20, final_tokens=200*len(train_dataset)*args.block_size,
-                          num_workers=4)
-    trainer = Trainer(model, train_dataset, None, tconf)
+                          num_workers=4, ckpt_path=args.ckpt_path)
+    trainer = Trainer(model, train_dataset, None, tconf, args)
     trainer.train()
-
-
-    # alright, let's sample some character-level shakespear
-    context = "O God, O God!"
-    x = torch.tensor([train_dataset.stoi[s] for s in context], dtype=torch.long)[None,...].to(trainer.device)
-    y = sample(model, x, 2000, temperature=0.9, sample=True, top_k=5)[0]
-    completion = ''.join([train_dataset.itos[int(i)] for i in y])
-    print(completion)
-
 
 
 if __name__ == '__main__':

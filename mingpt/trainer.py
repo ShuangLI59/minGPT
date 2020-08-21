@@ -13,6 +13,9 @@ import torch
 import torch.optim as optim
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data.dataloader import DataLoader
+from mingpt.utils import sample
+import pdb
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +41,12 @@ class TrainerConfig:
 
 class Trainer:
 
-    def __init__(self, model, train_dataset, test_dataset, config):
+    def __init__(self, model, train_dataset, test_dataset, config, args):
         self.model = model
         self.train_dataset = train_dataset
         self.test_dataset = test_dataset
         self.config = config
+        self.args = args
 
         # take over whatever gpus are on the system
         self.device = 'cpu'
@@ -52,9 +56,11 @@ class Trainer:
 
     def save_checkpoint(self):
         if self.config.ckpt_path is not None:
+            os.makedirs( '/'.join(self.config.ckpt_path.split('/')[:-1]), exist_ok=True )
+
             ckpt_model = self.model.module if hasattr(self.model, "module") else self.model
             logger.info("saving %s", self.config.ckpt_path)
-            torch.save(ckpt_model.state_dict(), self.config.ckpt_path)
+            torch.save(ckpt_model.state_dict(), self.config.ckpt_path + '_best.pth')
 
     def train(self):
         model, config = self.model, self.config
@@ -119,16 +125,46 @@ class Trainer:
             if not is_train:
                 logger.info("test loss: %f", np.mean(losses))
 
+            return np.mean(losses)
+
         self.tokens = 0 # counter used for learning rate decay
+        best_loss = np.inf
         for epoch in range(config.max_epochs):
 
-            run_epoch('train')
+            loss = run_epoch('train')
             if self.test_dataset is not None:
                 run_epoch('test')
 
-            self.save_checkpoint()
+            
+            if loss<=best_loss:
+                best_loss = loss
+                self.save_checkpoint()
+                self.test_gen_text()
+
+            self.test_gen_text(epoch)
 
 
+    def test_gen_text(self, epoch=None):
+        
+        # alright, let's sample some character-level shakespear
+        if 'comm' in self.args.input_data:
+            context = "put "
+        else:
+            context = "O God, O God!"
+
+        x = torch.tensor([self.train_dataset.stoi[s] for s in context], dtype=torch.long)[None,...].to(self.device)
+        y = sample(self.model.module, x, 500, temperature=0.9, sample=True, top_k=5)[0]
+        completion = ''.join([self.train_dataset.itos[int(i)] for i in y])
+        print(completion)
+
+        if epoch is not None:
+            file = open( '%s_epo%d.txt' % (self.args.ckpt_path, epoch), "w") 
+        else:
+            file = open( '%s_best.txt' % (self.args.ckpt_path), "w") 
+        
+        file.write(completion)
+        file.close()
+        
 
 
 
