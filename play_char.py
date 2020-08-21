@@ -5,11 +5,12 @@ from torch.nn import functional as F
 import math
 from torch.utils.data import Dataset
 import logging
-from mingpt.model import GPT, GPTConfig
+import argparse
 # make deterministic
 from mingpt.utils import set_seed
 set_seed(42)
 
+from mingpt.model import GPT, GPTConfig
 from mingpt.trainer import Trainer, TrainerConfig
 from mingpt.utils import sample
 
@@ -45,7 +46,7 @@ class CharDataset(Dataset):
         return x, y
 
 
-def main():
+def main(args):
 
     # set up logging
     logging.basicConfig(
@@ -57,7 +58,7 @@ def main():
 
     # you can download this file at https://github.com/karpathy/char-rnn/blob/master/data/tinyshakespeare/input.txt
     text = open('input.txt', 'r').read() # don't worry we won't run out of file handles
-    train_dataset = CharDataset(text, block_size) # one line of poem is roughly 50 characters
+    train_dataset = CharDataset(text, args.block_size) # one line of poem is roughly 50 characters
 
 
     mconf = GPTConfig(train_dataset.vocab_size, train_dataset.block_size,
@@ -67,7 +68,7 @@ def main():
 
     # initialize a trainer instance and kick off training
     tconf = TrainerConfig(max_epochs=200, batch_size=512, learning_rate=6e-4,
-                          lr_decay=True, warmup_tokens=512*20, final_tokens=200*len(train_dataset)*block_size,
+                          lr_decay=True, warmup_tokens=512*20, final_tokens=200*len(train_dataset)*args.block_size,
                           num_workers=4)
     trainer = Trainer(model, train_dataset, None, tconf)
     trainer.train()

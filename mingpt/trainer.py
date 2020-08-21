@@ -127,3 +127,8 @@ class Trainer:
                 run_epoch('test')
 
             self.save_checkpoint()
+
+
+
+
+

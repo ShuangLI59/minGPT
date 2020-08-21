@@ -84,19 +84,19 @@ class AdditionDataset(Dataset):
 
 
 # now let's give the trained model an addition exam
-def give_exam(dataset, batch_size=32, max_batches=-1):
+def give_exam(args, dataset, trainer, model, batch_size=32, max_batches=-1):
     
     results = []
     loader = DataLoader(dataset, batch_size=batch_size)
     for b, (x, y) in enumerate(loader):
         x = x.to(trainer.device)
-        d1d2 = x[:, :ndigit*2]
-        d1d2d3 = sample(model, d1d2, ndigit+1)
-        d3 = d1d2d3[:, -(ndigit+1):]
-        factors = torch.tensor([[10**i for i in range(ndigit+1)][::-1]]).to(trainer.device)
+        d1d2 = x[:, :args.ndigit*2]
+        d1d2d3 = sample(model, d1d2, args.ndigit+1)
+        d3 = d1d2d3[:, -(args.ndigit+1):]
+        factors = torch.tensor([[10**i for i in range(args.ndigit+1)][::-1]]).to(trainer.device)
         # decode the integers from individual digits
-        d1i = (d1d2[:,:ndigit] * factors[:,1:]).sum(1)
-        d2i = (d1d2[:,ndigit:ndigit*2] * factors[:,1:]).sum(1)
+        d1i = (d1d2[:,:args.ndigit] * factors[:,1:]).sum(1)
+        d2i = (d1d2[:,args.ndigit:args.ndigit*2] * factors[:,1:]).sum(1)
         d3i_pred = (d3 * factors).sum(1)
         d3i_gt = d1i + d2i
         correct = (d3i_pred == d3i_gt).cpu() # Software 1.0 vs. Software 2.0 fight RIGHT on this line, lol
@@ -114,7 +114,7 @@ def give_exam(dataset, batch_size=32, max_batches=-1):
 
 
 
-def main():
+def main(args):
 
     # set up logging
     logging.basicConfig(
@@ -123,8 +123,8 @@ def main():
             level=logging.INFO,
     )
 
-    train_dataset = AdditionDataset(ndigit=ndigit, split='train')
-    test_dataset = AdditionDataset(ndigit=ndigit, split='test')
+    train_dataset = AdditionDataset(ndigit=args.ndigit, split='train')
+    test_dataset = AdditionDataset(ndigit=args.ndigit, split='test')
 
     # sample a training instance just to see what one raw example looks like
     print(train_dataset[0])
@@ -141,17 +141,17 @@ def main():
 
     # initialize a trainer instance and kick off training
     tconf = TrainerConfig(max_epochs=50, batch_size=512, learning_rate=6e-4,
-                          lr_decay=True, warmup_tokens=1024, final_tokens=50*len(train_dataset)*(ndigit+1),
+                          lr_decay=True, warmup_tokens=1024, final_tokens=50*len(train_dataset)*(args.ndigit+1),
                           num_workers=4)
     trainer = Trainer(model, train_dataset, test_dataset, tconf)
     trainer.train()
 
 
     # training set: how well did we memorize?
-    give_exam(train_dataset, batch_size=1024, max_batches=10)
+    give_exam(args, train_dataset, trainer, model, batch_size=1024, max_batches=10)
 
     # test set: how well did we generalize?
-    give_exam(test_dataset, batch_size=1024, max_batches=-1)
+    give_exam(args, test_dataset, trainer, model, batch_size=1024, max_batches=-1)
 
 
 
