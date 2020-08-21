@@ -114,7 +114,7 @@ class Trainer:
                         lr = config.learning_rate
 
                     # report progress
-                    pbar.set_description(f"epoch {epoch+1} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
+                    pbar.set_description(f"epoch {epoch+1}/{config.max_epochs} iter {it}: train loss {loss.item():.5f}. lr {lr:e}")
 
             if not is_train:
                 logger.info("test loss: %f", np.mean(losses))
