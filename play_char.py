@@ -91,6 +91,7 @@ def main(args):
         print('loadig data from %s' % args.input_data)
         # you can download this file at https://github.com/karpathy/char-rnn/blob/master/data/tinyshakespeare/input.txt
         text = open( args.input_data, 'r').read() # don't worry we won't run out of file handles
+    
     train_dataset = CharDataset(text, args.block_size) # one line of poem is roughly 50 characters
 
 

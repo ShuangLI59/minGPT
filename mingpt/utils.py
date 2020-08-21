@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+import pdb
 
 def set_seed(seed):
     random.seed(seed)
@@ -27,6 +28,7 @@ def sample(model, x, steps, temperature=1.0, sample=False, top_k=None):
     block_size = model.get_block_size()
     model.eval()
     for k in range(steps):
+        pdb.set_trace()
         x_cond = x if x.size(1) <= block_size else x[:, -block_size:] # crop context if needed
         logits, _ = model(x_cond)
         # pluck the logits at the final step and scale by temperature
